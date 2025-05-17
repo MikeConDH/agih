@@ -1,0 +1,20 @@
+[project]
+name = "ai-events-scraper"
+version = "0.1.0"
+description = "A LangGraph-based AI events scraper and formatter"
+requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["agents"]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+langchain = "^0.1.0"
+langchain-community = "^0.0.10"
+langgraph = "^0.0.15"
+python-dotenv = "^1.0.0"
+perplexity-api = "^1.0.5" 

@@ -1,0 +1,5 @@
+Metadata-Version: 2.4
+Name: ai-events-scraper
+Version: 0.1.0
+Summary: A LangGraph-based AI events scraper and formatter
+Requires-Python: >=3.11
