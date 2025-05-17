@@ -5,10 +5,42 @@ from agents.reporter import ReporterAgent
 from agents.supervisor import SupervisorAgent
 import json
 import logging
+from dotenv import load_dotenv
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Debug: Print current directory and .env file existence
+logger.info(f"Current directory: {os.getcwd()}")
+logger.info(f".env file exists: {os.path.exists('.env')}")
+
+# Load environment variables
+load_dotenv()
+
+# Debug: Print environment variables (without values)
+logger.info("Environment variables present:")
+for key in ["OPENAI_API_KEY", "PERPLEXITY_API_KEY"]:
+    logger.info(f"{key} is {'set' if os.getenv(key) else 'not set'}")
+
+def validate_api_keys():
+    """Validate that all required API keys are present."""
+    required_keys = {
+        "OPENAI_API_KEY": "OpenAI API key for GPT-4",
+        "PERPLEXITY_API_KEY": "Perplexity API key for event search"
+    }
+    
+    missing_keys = []
+    for key, description in required_keys.items():
+        if not os.getenv(key):
+            missing_keys.append(f"{key} ({description})")
+    
+    if missing_keys:
+        raise ValueError(
+            "Missing required API keys. Please set the following environment variables:\n" +
+            "\n".join(f"- {key}" for key in missing_keys)
+        )
 
 # Define state types
 class AgentState(TypedDict):
@@ -41,6 +73,9 @@ def create_workflow() -> StateGraph:
     return workflow
 
 def run():
+    # Validate API keys first
+    validate_api_keys()
+    
     # Create workflow
     app = create_workflow()
     

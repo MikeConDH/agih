@@ -1,0 +1,104 @@
+{
+  "messages": [],
+  "events": [
+    {
+      "title": "```plaintext",
+      "date": "2025-05-19",
+      "location": "San Francisco",
+      "url": "https://agendahero.com/schedule/0f8899a0-3dbc-4d6a-ad05-58225b751316",
+      "type": "Conference"
+    },
+    {
+      "title": "Title: Glean:GO 2025",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://www.glean.com/events/glean-go-2025",
+      "type": "Conference"
+    },
+    {
+      "title": "Title: Upscale Conf 2025",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://www.neonmoire.com/announcement/ai-design-events-and-workshops",
+      "type": "Workshop"
+    },
+    {
+      "title": "Title: Generative AI SF Meetups and Workshops",
+      "date": "2025-05-19",
+      "location": "San Francisco",
+      "url": "https://lu.ma/genai-sf",
+      "type": "Meetup"
+    },
+    {
+      "title": "```plaintext",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://www.glean.com/events/glean-go-2025",
+      "type": "Conference"
+    },
+    {
+      "title": "Title: Fully Connected by Weights & Biases",
+      "date": "2025-05-19",
+      "location": "San Francisco",
+      "url": "https://www.wandb.com/events/fully-connected-2025",
+      "type": "Conference"
+    },
+    {
+      "title": "Title: AI Performance Engineering Meetup",
+      "date": "2025-05-19",
+      "location": "San Francisco",
+      "url": "https://www.meetup.com/generative-ai-on-aws/",
+      "type": "Meetup"
+    },
+    {
+      "title": "Title: Glean:GO 2025",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://www.glean.com/events/glean-go-2025",
+      "type": "Conference"
+    },
+    {
+      "title": "Title: Sequoia Capital AI Ascent 2025",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://www.sequoiacap.com/article/ai-ascent-2025/",
+      "type": "Conference"
+    },
+    {
+      "title": "1. Title: Generative AI San Francisco events - An Intuitive Introduction to Machine Learning",
+      "date": "2025-05-19",
+      "location": "San Francisco",
+      "url": "https://lu.ma/genai-sf",
+      "type": "Workshop"
+    },
+    {
+      "title": "2. Title: Generative AI San Francisco events - San Francisco Vibe Coding PROMPTathon",
+      "date": "2025-05-19",
+      "location": "San Francisco",
+      "url": "https://lu.ma/genai-sf",
+      "type": "Hackathon"
+    },
+    {
+      "title": "4. Title: MLcon San Diego 2025",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://dev.events/NA/US/CA/ml",
+      "type": "Conference"
+    },
+    {
+      "title": "```yaml",
+      "date": "2025-05-20",
+      "location": "San Francisco",
+      "url": "https://www.glean.com/events/glean-go-2025",
+      "type": "Conference"
+    },
+    {
+      "title": "Title: AI & Tech Networking San Francisco",
+      "date": "2025-05-21",
+      "location": "San Francisco",
+      "url": "https://www.eventbrite.com/e/ai-tech-networking-san-francisco-tickets-1250909406709",
+      "type": "Meetup"
+    }
+  ],
+  "status": "needs_review"
+}

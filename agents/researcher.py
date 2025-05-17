@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 from typing import Dict, Any, List, Annotated
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.tools import tool
+from langchain_openai import ChatOpenAI
 import json
 from datetime import datetime, timedelta
 import os
@@ -16,8 +17,22 @@ logger = logging.getLogger(__name__)
 class ResearcherAgent:
     def __init__(self):
         self.events = []
+        
+        # Validate API keys
+        if not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("OPENAI_API_KEY environment variable is not set")
+        if not os.getenv("PERPLEXITY_API_KEY"):
+            raise ValueError("PERPLEXITY_API_KEY environment variable is not set")
+        
         # Initialize Perplexity Client
-        self.search_tool = Client()
+        self.search_tool = Client()  # Perplexity client automatically uses the API key from environment
+        
+        # Initialize OpenAI model for event processing
+        self.llm = ChatOpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model="gpt-4-turbo-preview"  # Using GPT-4 for better event understanding
+        )
+        
         self.results_dir = "./results"
         os.makedirs(self.results_dir, exist_ok=True)
         self.sample_events = [
@@ -38,17 +53,30 @@ class ResearcherAgent:
     
     def _extract_event_details(self, text: str) -> Dict[str, Any]:
         """Extract structured event details from text."""
-        # Basic pattern matching for dates
-        date_pattern = r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b'
-        dates = re.findall(date_pattern, text)
+        # More comprehensive date patterns
+        date_patterns = [
+            r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b',  # May 19, 2025
+            r'\b\d{4}-\d{2}-\d{2}\b',  # 2025-05-19
+            r'\b(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]* \d{1,2}(?:st|nd|rd|th)?,? \d{4}\b'  # Monday, May 19, 2025
+        ]
+        
+        dates = []
+        for pattern in date_patterns:
+            dates.extend(re.findall(pattern, text))
         
         # Extract time if present
         time_pattern = r'\b\d{1,2}:\d{2}(?::\d{2})?\s*(?:AM|PM|am|pm)?\b'
         times = re.findall(time_pattern, text)
         
+        # Try to extract a title (first line or first sentence)
+        title = text.split('\n')[0].strip() if text else ""
+        if len(title) > 100:
+            title = title[:97] + "..."
+        
         return {
             "date": dates[0] if dates else None,
             "time": times[0] if times else None,
+            "title": title,
             "raw_text": text
         }
     
@@ -59,9 +87,27 @@ class ResearcherAgent:
             
         # Check if date is within our target range
         try:
-            event_date = datetime.strptime(event["date"], "%Y-%m-%d")
-            target_start = datetime(2025, 5, 19)
-            target_end = datetime(2025, 5, 23)
+            # Try different date formats
+            date_formats = [
+                "%Y-%m-%d",  # 2025-05-19
+                "%B %d, %Y",  # May 19, 2025
+                "%A, %B %d, %Y"  # Monday, May 19, 2025
+            ]
+            
+            event_date = None
+            for date_format in date_formats:
+                try:
+                    event_date = datetime.strptime(event["date"], date_format)
+                    break
+                except ValueError:
+                    continue
+            
+            if not event_date:
+                return False
+                
+            # Target range: May 19-23, 2025
+            target_start = datetime(2025, 5, 19)  # Monday
+            target_end = datetime(2025, 5, 23)    # Friday
             return target_start <= event_date <= target_end
         except (ValueError, TypeError):
             return False
@@ -69,41 +115,128 @@ class ResearcherAgent:
     def _search_events(self, query: str) -> List[Dict[str, Any]]:
         """Search for events using Perplexity Client."""
         try:
-            logger.info(f"🔎 Searching for: {query}")
-            # Use the Perplexity Client's search method
+            print("\n🔍 ===== STARTING NEW SEARCH =====")
+            print(f"Query: {query}")
+            
             search_results = self.search_tool.search(query)
-            logger.info(f"🔍 Raw search_results: {repr(search_results)}")
             
-            if not search_results:
-                logger.warning("No search results found")
-                return []
-            
-            # Process search results into event format
-            events = []
-            # If search_results is a dict with 'results' key, use it
-            if isinstance(search_results, dict) and 'results' in search_results:
-                search_results = search_results['results']
-            for result in search_results:
-                # If result is a dict with 'text' or 'title', use it
-                if isinstance(result, dict):
-                    text = result.get('text') or result.get('title') or str(result)
+            # Extract the actual answer text from the Perplexity response
+            if isinstance(search_results, dict) and 'text' in search_results:
+                for item in search_results['text']:
+                    if isinstance(item, dict) and item.get('step_type') == 'FINAL':
+                        content = item.get('content', {})
+                        if isinstance(content, dict) and 'answer' in content:
+                            text = content['answer']
+                            break
                 else:
-                    text = str(result)
-                if text.strip():
-                    event_details = self._extract_event_details(text)
-                    if event_details["date"]:  # Only include if we found a date
-                        events.append({
-                            "title": text[:100],  # Use first 100 chars as title
-                            "date": event_details["date"],
-                            "time": event_details["time"],
-                            "location": "San Francisco",  # Default to SF
-                            "description": text,
-                            "url": result.get('url') if isinstance(result, dict) else None
-                        })
-            # Return all events found, not just one
+                    text = str(search_results)
+            else:
+                text = str(search_results)
+            
+            # Clean up the response
+            text = text.replace('\\n', '\n').replace('\\"', '"')
+            
+            # Use LLM to clean and structure the events
+            prompt = f"""Given the following text about AI events, extract and format the events into a clean list. 
+            Remove any JSON artifacts, web results, or non-event content. Format each event with ONLY these fields:
+            - Title (clean, no markdown)
+            - Date (in YYYY-MM-DD format)
+            - Location (if available)
+            - URL (MUST be included, if not found in text, search for the event's website)
+            - Type (Conference, Meetup, Workshop, or Hackathon)
+
+            DO NOT include time or description fields.
+            Each event MUST have a URL - if not found in the text, search for the event's official website.
+
+            Text to process:
+            {text}
+
+            Return the events in a clean, structured format."""
+
+            response = self.llm.invoke(prompt)
+            cleaned_text = response.content
+            
+            # Split into potential events
+            event_blocks = []
+            current_block = []
+            
+            for line in cleaned_text.split('\n'):
+                line = line.strip()
+                if not line:
+                    if current_block:
+                        event_blocks.append('\n'.join(current_block))
+                        current_block = []
+                elif line.startswith(('###', '- **', '* **', '**')):
+                    if current_block:
+                        event_blocks.append('\n'.join(current_block))
+                        current_block = []
+                    current_block.append(line)
+                else:
+                    current_block.append(line)
+            
+            if current_block:
+                event_blocks.append('\n'.join(current_block))
+            
+            events = []
+            for block in event_blocks:
+                if not block.strip():
+                    continue
+                
+                # Skip summary blocks and JSON artifacts
+                if any(skip in block.lower() for skip in ['summary', 'in summary', 'overview', 'note:', 'while there are']):
+                    continue
+                if block.startswith('{') or block.startswith('"answer":'):
+                    continue
+                
+                # Extract event details
+                event_details = self._extract_event_details(block)
+                
+                if event_details["date"]:
+                    # Clean up the title
+                    title = event_details["title"]
+                    
+                    # Remove markdown and formatting
+                    title = re.sub(r'^\*\*|\*\*$', '', title)  # Remove markdown bold
+                    title = re.sub(r'^\[.*?\]', '', title)  # Remove [link] prefix
+                    title = re.sub(r'\(pplx://.*?\)', '', title)  # Remove Perplexity links
+                    title = re.sub(r'^###\s*', '', title)  # Remove markdown headers
+                    title = re.sub(r'^\s*[-•*]\s*', '', title)  # Remove bullet points
+                    title = re.sub(r'^"|"$', '', title)  # Remove quotes
+                    title = re.sub(r',\s*$', '', title)  # Remove trailing commas
+                    title = title.strip()
+                    
+                    # Determine event type
+                    event_type = "Conference"
+                    if any(word in block.lower() for word in ['meetup', 'networking']):
+                        event_type = "Meetup"
+                    elif any(word in block.lower() for word in ['workshop', 'training']):
+                        event_type = "Workshop"
+                    elif any(word in block.lower() for word in ['hackathon']):
+                        event_type = "Hackathon"
+                    
+                    # Extract URL from the block
+                    url = None
+                    url_pattern = r'https?://[^\s<>"]+|www\.[^\s<>"]+'
+                    urls = re.findall(url_pattern, block)
+                    if urls:
+                        url = urls[0]
+                    
+                    event = {
+                        "title": title,
+                        "date": event_details["date"],
+                        "location": "San Francisco",
+                        "url": url,
+                        "type": event_type
+                    }
+                    
+                    if self._validate_event(event):
+                        events.append(event)
+            
             return events
         except Exception as e:
-            logger.error(f"Error searching events: {str(e)}")
+            print(f"\n💥 ERROR: {str(e)}")
+            import traceback
+            print(traceback.format_exc())
             return []
     
     def scrape_events(self) -> List[Dict]:

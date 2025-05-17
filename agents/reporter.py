@@ -1,6 +1,7 @@
 import json
 from typing import Dict, Any, List
 from langchain_core.messages import HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
 import os
 from datetime import datetime
 from .utils import log_emoji
@@ -13,35 +14,16 @@ class ReporterAgent:
         self.results_dir = "./results"
         os.makedirs(self.results_dir, exist_ok=True)
         self.output_file = "discord_events.txt"
-    
-    def _format_event(self, event: Dict[str, Any]) -> str:
-        """Format a single event for Discord."""
-        try:
-            # Format date and time
-            date_str = event.get("date", "TBD")
-            time_str = event.get("time", "TBD")
-            
-            # Format location
-            location = event.get("location", "San Francisco")
-            
-            # Format description (truncate if too long)
-            description = event.get("description", "")
-            if len(description) > 200:
-                description = description[:197] + "..."
-            
-            # Format URL if available
-            url = event.get("url", "")
-            url_str = f"\n🔗 {url}" if url else ""
-            
-            # Create Discord-formatted message
-            return f"""**{event.get('title', 'Untitled Event')}**
-📅 {date_str} at {time_str}
-📍 {location}
-📝 {description}{url_str}
--------------------"""
-        except Exception as e:
-            logger.error(f"Error formatting event: {str(e)}")
-            return f"Error formatting event: {str(e)}"
+        
+        # Validate OpenAI API key
+        if not os.getenv("OPENAI_API_KEY"):
+            raise ValueError("OPENAI_API_KEY environment variable is not set")
+        
+        # Initialize OpenAI model for event formatting
+        self.llm = ChatOpenAI(
+            api_key=os.getenv("OPENAI_API_KEY"),
+            model="gpt-4-turbo-preview"  # Using GPT-4 for better formatting
+        )
     
     def _save_to_file(self, formatted_events: str):
         """Save formatted events to file."""
@@ -51,6 +33,70 @@ class ReporterAgent:
             logger.info(f"💾 Reporter: Output saved to {self.output_file}")
         except Exception as e:
             logger.error(f"Error saving output: {str(e)}")
+    
+    def format_events(self, events: List[Dict[str, Any]]) -> str:
+        """Format events for Discord output."""
+        log_emoji("✍️", "Reporter: Formatting events")
+        try:
+            # Get current week number
+            current_week = datetime.now().isocalendar()[1]
+            
+            # Use LLM to format events
+            prompt = f"""Format these AI events for Discord using this EXACT format:
+            **[[Title]](URL)** (TYPE)[Category]
+
+            Rules:
+            1. Title should be clean, no markdown except the outer **
+            2. URL must be included
+            3. TYPE should be one of: INPERSON, ONLINE, or HYBRID
+            4. Category should be one of: [Tech Session], [Workshop], [Conference], [Meetup], [Hackathon]
+            5. Group events by day of the week
+            6. Each day must start with a header in the format: **[DAY]** (e.g. **[MONDAY]**, **[TUESDAY]**, etc.)
+            7. No descriptions, no dates, no times
+            8. No additional text or comments
+            9. Events must be grouped under their correct day of the week
+            10. If multiple events have the same URL, only include one entry (the first one encountered)
+            11. IMPORTANT: May 19, 2025 is a MONDAY. Map the days correctly:
+                - May 19, 2025 = MONDAY
+                - May 20, 2025 = TUESDAY
+                - May 21, 2025 = WEDNESDAY
+                - May 22, 2025 = THURSDAY
+                - May 23, 2025 = FRIDAY
+            12. Include ALL days from Monday to Friday, even if there are no events for a particular day
+
+            Example format:
+            **[MONDAY]**
+            **[[AI Performance Engineering Meetup]](https://example.com/event)** (INPERSON)[Tech Session]
+
+            **[TUESDAY]**
+            **[[ML Workshop]](https://example.com/workshop)** (ONLINE)[Workshop]
+
+            **[WEDNESDAY]**
+            (no events)
+
+            **[THURSDAY]**
+            **[[AI Conference]](https://example.com/conference)** (INPERSON)[Conference]
+
+            **[FRIDAY]**
+            (no events)
+
+            Events to format:
+            {json.dumps(events, indent=2)}
+
+            Return ONLY the formatted events, with day headers and proper grouping."""
+
+            response = self.llm.invoke(prompt)
+            formatted_content = response.content
+            
+            # Add week header
+            markdown = f"**==================[ WEEK {current_week} EVENTS ]==================**\n\n"
+            markdown += formatted_content
+            
+            log_emoji("✅", "Reporter: Events formatted successfully")
+            return markdown
+        except Exception as e:
+            log_emoji("❌", f"Reporter: Error formatting events: {e}")
+            return "Error formatting events"
     
     def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
         """Run the reporter agent."""
@@ -62,20 +108,15 @@ class ReporterAgent:
                 logger.warning("No events to format")
                 return state
             
-            # Format each event
-            formatted_events = []
-            for event in events:
-                formatted_event = self._format_event(event)
-                formatted_events.append(formatted_event)
+            # Format events
+            formatted_content = self.format_events(events)
             
-            # Join all formatted events
-            final_output = "\n\n".join(formatted_events)
-            
-            # Save to file
-            self._save_to_file(final_output)
+            # Save to all output files
+            self._save_to_file(formatted_content)  # discord_events.txt
+            self.save_output(formatted_content)    # events.md and done file
             
             # Update state
-            state["formatted_events"] = final_output
+            state["formatted_events"] = formatted_content
             state["status"] = "formatted"
             
             return state
@@ -85,39 +126,6 @@ class ReporterAgent:
             state["status"] = "error"
             state["error"] = str(e)
             return state
-    
-    def format_events(self, events_str: str) -> str:
-        log_emoji("✍️", "Reporter: Formatting events")
-        try:
-            events = json.loads(events_str)
-            
-            # Get current week number
-            current_week = datetime.now().isocalendar()[1]
-            
-            # Start building the markdown
-            markdown = f"**==================[ WEEK {current_week} EVENTS ]==================**\n\n"
-            
-            # Group events by day
-            events_by_day = {}
-            for event in events:
-                day = event["Date"].split(",")[0]  # Get the day name
-                if day not in events_by_day:
-                    events_by_day[day] = []
-                events_by_day[day].append(event)
-            
-            # Format each day's events
-            for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]:
-                if day in events_by_day:
-                    markdown += f"**[ {day} ]**\n"
-                    for event in events_by_day[day]:
-                        markdown += f"**[[{event['Title']}]]({event['URL']})** ({event['Location']})[{event['Type']}]\n"
-                    markdown += "\n"
-            
-            log_emoji("✅", "Reporter: Events formatted successfully")
-            return markdown
-        except Exception as e:
-            log_emoji("❌", f"Reporter: Error formatting events: {e}")
-            return "Error formatting events"
     
     def save_output(self, content: str):
         log_emoji("💾", "Reporter: Saving output")
@@ -135,29 +143,5 @@ class ReporterAgent:
             log_emoji("❌", f"Reporter: Error saving output: {e}")
     
     def __call__(self, state: Dict[str, Any]) -> Dict[str, Any]:
-        messages = state.get("messages", [])
-        last_message = messages[-1] if messages else None
-        
-        if last_message and last_message.type == "human":
-            log_emoji("🎯", "Reporter: Processing events")
-            
-            # Format events
-            formatted_content = self.format_events(last_message.content)
-            
-            # Save output
-            self.save_output(formatted_content)
-            
-            return {
-                "messages": [AIMessage(content="Events formatted and saved successfully")],
-                "events": state.get("events", []),
-                "status": "completed",
-                "next": "end"
-            }
-        
-        log_emoji("⚠️", "Reporter: No events to format")
-        return {
-            "messages": [AIMessage(content="No events to format")],
-            "events": state.get("events", []),
-            "status": "error",
-            "next": "end"
-        } 
+        """Handle direct calls to the reporter agent."""
+        return self.run(state) 

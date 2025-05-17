@@ -1,0 +1,23 @@
+**==================[ WEEK 20 EVENTS ]==================**
+
+**[MONDAY]**
+**[[Fully Connected by Weights & Biases]](https://www.wandb.com/events/fully-connected-2025)** (INPERSON)[Conference]
+**[[Generative AI SF Meetups and Workshops]](https://lu.ma/genai-sf)** (INPERSON)[Meetup]
+**[[AI Performance Engineering Meetup]](https://www.meetup.com/generative-ai-on-aws/)** (INPERSON)[Meetup]
+**[[An Intuitive Introduction to Machine Learning]](https://lu.ma/genai-sf)** (ONLINE)[Workshop]
+**[[San Francisco Vibe Coding PROMPTathon]](https://lu.ma/genai-sf)** (ONLINE)[Hackathon]
+
+**[TUESDAY]**
+**[[Glean:GO 2025]](https://www.glean.com/events/glean-go-2025)** (INPERSON)[Conference]
+**[[Upscale Conf 2025]](https://www.neonmoire.com/announcement/ai-design-events-and-workshops)** (INPERSON)[Workshop]
+**[[Sequoia Capital AI Ascent 2025]](https://www.sequoiacap.com/article/ai-ascent-2025/)** (INPERSON)[Conference]
+**[[MLcon San Diego 2025]](https://dev.events/NA/US/CA/ml)** (INPERSON)[Conference]
+
+**[WEDNESDAY]**
+**[[AI & Tech Networking San Francisco]](https://www.eventbrite.com/e/ai-tech-networking-san-francisco-tickets-1250909406709)** (INPERSON)[Meetup]
+
+**[THURSDAY]**
+(no events)
+
+**[FRIDAY]**
+(no events)
