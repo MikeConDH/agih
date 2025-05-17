@@ -52,11 +52,18 @@ Three-agent system for AI event discovery and formatting:
 - Occasional formatting inconsistencies
 - Limited error recovery 
 
-## ToDo
-- DISCORD, Post
-- MCP, Google, Other   
-- FETCH, Wrapper 
-- FETCH AE
+## NEXT
+1) DISCORD, Post
+https://docs.google.com/document/d/1Dk7pHbl3eQugGyKGLTubUi0ua1q7hZB2mH1z6F8SARU/edit?usp=sharing
+- MCP Server nict to have, just webhook for now, post and run.
+
+2) MCP, Google, Other  
+- Google MPC for my Calendar, Email, doc search
+- Markdwon Formatter MCP (got to build one) 
+
+3) FETCH, Wrapper 
+4) FETCH AE
+5) AIMPEG as an MCP (stretch)
 
 ##Appendix
 https://docs.google.com/document/d/166RTnbr9voRb58YiblWkBTzI5QSO6_aryPLH_qWA1yw/edit?tab=t.0
